@@ -1,18 +1,13 @@
 import json
-import time
-
 import logging
+import time
 
 from selenium import webdriver
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
-
-from scrapper import scrape_product_highlight
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -69,9 +64,10 @@ load_all_courses_full_scroll()
 
 # Getting the total pages and storing them into list
 courses = driver.find_elements(By.XPATH, "//a[@class='listingCardBoxCard ']")
-total = len(courses)
+# total = len(courses) Uncomment to scrape all the courses
+total = 20
 
-batch_size = 10  
+batch_size = 20
 
 course_title = ""
 highlight_text = []
@@ -84,7 +80,7 @@ for i in range(0, total, batch_size):
     batch = courses[i:i + batch_size]
     logging.info("Opening 4 tabs for scrapping")
 
-    # Open 4 tabs
+    # Open tabs
     for element in batch:
         ActionChains(driver).key_down(Keys.CONTROL).click(element).key_up(Keys.CONTROL).perform()
         time.sleep(1)
@@ -96,14 +92,14 @@ for i in range(0, total, batch_size):
     new_tabs = [tab for tab in all_tabs if tab != main_window]
 
     logging.info("Scrapping each tab and closing")
-    # Scrape and close each new tab
+    # =======================Scrape and close each new tab=======================
     for tab in new_tabs:
         driver.switch_to.window(tab)
         time.sleep(2)  # wait for content to load
         print("Title:", driver.title)
         course_title = driver.title
 
-        # Locating the Product highlights texts
+        # =======================Scrapping Course Highlight=======================
         logging.info("Scrapping product highlight")
         highlights = driver.find_elements(By.XPATH, "//div[@class='pdpHighlightFullBox']/ul/li")
         for highlight in highlights:
@@ -111,7 +107,7 @@ for i in range(0, total, batch_size):
         print(highlight_text)
 
 
-        # Scrapping the Exam Covers
+        # =======================Scrapping the Exam Covers=======================
         logging.info("Scrapping product exam_coverage")
 
         # Finding the Show More button
@@ -130,26 +126,26 @@ for i in range(0, total, batch_size):
         print(exam_cover_text)
 
 
-        # Scrapping Course Inclusions
+        # =======================Scrapping Course Inclusions=======================
         inclusions_elements = driver.find_elements(By.XPATH, "//div[@class='pdpIncludeList']/ul/li")
         for inclusion_element in inclusions_elements:
             inclusions.append(inclusion_element.text)
         print(inclusions)
+
+        # =======================Saving the data in JSON format=======================
+        course_info = {
+            "title": course_title,
+            "product_highlights": highlight_text,
+            "exam_covers": exam_cover_text,
+            "this_course_includes": inclusions
+        }
+        courses_data.append(course_info)
 
         driver.close()  # close this tab
 
     # Switch back to main tab
     driver.switch_to.window(main_window)
     time.sleep(1)
-
-    # Saving the data in JSON format
-    course_info = {
-        "title": course_title,
-        "product_highlights": highlight_text,
-        "exam_covers": exam_cover_text,
-        "this_course_includes": inclusions
-    }
-
 driver.quit()
 
 try:
